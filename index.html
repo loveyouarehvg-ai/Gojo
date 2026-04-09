@@ -3,22 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gojo Power Web</title>
+  <title>Gojo Power Web - Fix Black Screen</title>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <style>
-    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: sans-serif; overflow: hidden; }
-    .container { position: relative; width: 640px; height: 480px; background: #111; border-radius: 12px; overflow: hidden; box-shadow: 0 0 20px rgba(0,255,255,0.2); }
+    body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; color: white; font-family: sans-serif; overflow: hidden; }
+    .container { position: relative; width: 640px; height: 480px; background: #111; border-radius: 12px; overflow: hidden; border: 2px solid #333; }
     video, canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
     #video { transform: rotateY(180deg); opacity: 0; }
     #canvas { transform: rotateY(180deg); }
-    .status { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px; font-size: 12px; z-index: 10; }
+    #btn-start { padding: 15px 30px; font-size: 18px; background: #00ffff; border: none; border-radius: 8px; cursor: pointer; color: #000; font-weight: bold; z-index: 100; position: absolute; }
+    .status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 20px; font-size: 14px; z-index: 10; border: 1px solid #0ff; }
   </style>
 </head>
 <body>
 
+  <button id="btn-start">คลิกเพื่อเริ่ม (อนุญาตใช้กล้อง)</button>
+  
   <div class="container">
-    <div class="status">สถานะ: กำลังโหลดโมเดล...</div>
+    <div class="status" id="status">สถานะ: รอการกดเริ่ม...</div>
     <video id="video" playsinline></video>
     <canvas id="canvas"></canvas>
   </div>
@@ -27,14 +30,20 @@
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
-const statusText = document.querySelector('.status');
+const statusText = document.getElementById('status');
+const startBtn = document.getElementById('btn-start');
 
 async function setupCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { width: 640, height: 480, frameRate: { ideal: 30 } }
-  });
-  video.srcObject = stream;
-  return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, frameRate: { ideal: 30 } }
+    });
+    video.srcObject = stream;
+    return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
+  } catch (err) {
+    alert("เข้าถึงกล้องไม่ได้! กรุณากดอนุญาตสิทธิ์การใช้กล้อง");
+    statusText.innerText = "Error: กล้องถูกบล็อก";
+  }
 }
 
 function getHandMode(landmarks) {
@@ -55,17 +64,17 @@ function drawLightning(x, y, color) {
   ctx.lineWidth = 4;
   ctx.moveTo(x, y);
   for(let i=0; i<6; i++) {
-    const tx = x + (Math.random()-0.5) * 120;
-    const ty = y + (Math.random()-0.5) * 120;
-    ctx.lineTo(tx, ty);
+    ctx.lineTo(x + (Math.random()-0.5) * 120, y + (Math.random()-0.5) * 120);
   }
   ctx.stroke();
 }
 
-async function main() {
+async function startApp() {
+  startBtn.style.display = 'none';
+  statusText.innerText = "สถานะ: กำลังโหลดโมเดล...";
+  
   await setupCamera();
   video.play();
-  statusText.innerText = "สถานะ: พร้อมใช้งาน (ห้ามปิดกล้อง)";
 
   const holistic = new Holistic({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`});
 
@@ -78,6 +87,8 @@ async function main() {
 
   holistic.onResults((results) => {
     if (!results || !results.image) return;
+    statusText.innerText = "สถานะ: กำลังรันพลังไสยเวทย์";
+
     ctx.save();
     
     // --- ระบบกางอาณาเขต ---
@@ -153,23 +164,5 @@ async function main() {
     }
 
     if (results.faceLandmarks) drawConnectors(ctx, results.faceLandmarks, FACEMESH_TESSELATION, {color: "rgba(255,255,255,0.2)", lineWidth: 0.5});
-    if (results.poseLandmarks) drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {color: isDomain ? "white" : "cyan", lineWidth: 1.5});
-    if (leftH) drawConnectors(ctx, leftH, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
-    if (rightH) drawConnectors(ctx, rightH, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
-
-    ctx.restore();
-  });
-
-  function predict() {
-    if (video.readyState >= 2) {
-      holistic.send({image: video});
-    }
-    video.requestVideoFrameCallback ? video.requestVideoFrameCallback(predict) : requestAnimationFrame(predict);
-  }
-  predict();
-}
-main();
-</script>
-</body>
-</html>
-
+    if
+  
