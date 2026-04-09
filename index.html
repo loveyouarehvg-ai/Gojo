@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Gojo</title>
+  <title>Gojo AI - Limitless Unleashed</title>
   
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -15,10 +15,10 @@
       position: relative; 
       width: 100vw; 
       aspect-ratio: 4 / 3;
-      background: #050505; 
+      background: #000; 
       overflow: hidden; 
-      border-top: 1px solid #222;
-      border-bottom: 1px solid #222;
+      border-top: 1px solid #333;
+      border-bottom: 1px solid #333;
     }
     video, canvas { 
       position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
@@ -28,27 +28,28 @@
     #canvas { z-index: 5; }
     .status-badge { 
       position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); 
-      padding: 5px 12px; font-size: 10px; border-left: 3px solid #0ff; z-index: 20; 
+      padding: 5px 12px; font-size: 10px; border-left: 3px solid #f00; z-index: 20; letter-spacing: 1px;
     }
     #start-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; 
       display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; 
     }
     button { 
-      padding: 15px 40px; font-size: 14px; background: transparent; border: 1px solid #0ff; 
-      color: #0ff; cursor: pointer; letter-spacing: 4px; 
+      padding: 15px 40px; font-size: 14px; background: transparent; border: 1px solid #f00; 
+      color: #f00; cursor: pointer; letter-spacing: 4px; font-weight: bold; transition: 0.3s;
     }
+    button:hover { background: #f00; color: #000; box-shadow: 0 0 20px #f00; }
   </style>
 </head>
 <body>
 
   <div id="start-overlay">
-    <h1 style="font-size: 16px; margin-bottom: 30px; letter-spacing: 5px;">LIMITLESS SYSTEM v2</h1>
-    <button id="btn-start">EXECUTE</button>
+    <h1 style="font-size: 18px; margin-bottom: 30px; letter-spacing: 8px; color: #fff;">SIX EYES: UNLEASHED</h1>
+    <button id="btn-start">EXECUTE SYSTEM</button>
   </div>
 
   <div class="container">
-    <div class="status-badge" id="status-text">FPS: CALIBRATING...</div>
+    <div class="status-badge" id="status-text">SYSTEM: IDLE</div>
     <video id="video" playsinline></video>
     <canvas id="canvas"></canvas>
   </div>
@@ -56,21 +57,41 @@
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-// รีดประสิทธิภาพด้วยการปิด Alpha และใช้ Desynchronized
 const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 const statusText = document.getElementById('status-text');
 const startOverlay = document.getElementById('start-overlay');
 const btnStart = document.getElementById('btn-start');
 
 function resizeCanvas() {
-  canvas.width = 480; // ลดความละเอียดภายในลงเล็กน้อยเพื่อความลื่นแบบ Extreme
-  canvas.height = 360; 
+  canvas.width = 640; 
+  canvas.height = 480; 
+}
+
+// ฟังก์ชันวาดสายฟ้า Black Flash แบบโหดๆ
+function drawBlackFlashLightning(x, y) {
+  ctx.save();
+  // สายฟ้าสีแดง (ชั้นนอก)
+  ctx.beginPath(); 
+  ctx.strokeStyle = "#ff0000"; 
+  ctx.lineWidth = 4; // เส้นหนาขึ้น
+  ctx.moveTo(x, y);
+  for(let i=0; i<6; i++) ctx.lineTo(x+(Math.random()-0.5)*150, y+(Math.random()-0.5)*150);
+  ctx.stroke();
+
+  // สายฟ้าสีดำทมิฬ (ชั้นใน)
+  ctx.beginPath(); 
+  ctx.strokeStyle = "#000000"; 
+  ctx.lineWidth = 2;
+  ctx.moveTo(x, y);
+  for(let i=0; i<6; i++) ctx.lineTo(x+(Math.random()-0.5)*150, y+(Math.random()-0.5)*150);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawEnergyBall(x, y, radius, colorInner, colorOuter) {
   const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
   grad.addColorStop(0, '#fff');
-  grad.addColorStop(0.2, colorInner);
+  grad.addColorStop(0.3, colorInner); // เร่งสีให้ชัดขึ้น
   grad.addColorStop(1, 'transparent');
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -78,36 +99,45 @@ function drawEnergyBall(x, y, radius, colorInner, colorOuter) {
   ctx.fill();
 }
 
-function drawLightning(x, y, color) {
-  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+function drawNormalLightning(x, y, color) {
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
   ctx.moveTo(x, y);
-  for(let i=0; i<3; i++) ctx.lineTo(x+(Math.random()-0.5)*70, y+(Math.random()-0.5)*70);
+  for(let i=0; i<3; i++) ctx.lineTo(x+(Math.random()-0.5)*80, y+(Math.random()-0.5)*80);
   ctx.stroke();
 }
 
 const holistic = new Holistic({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`});
-holistic.setOptions({ modelComplexity: 0, smoothLandmarks: false }); // ปิดความสมูทบางส่วนเพื่อแลกกับความเร็ว
+holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true }); 
 
 holistic.onResults((res) => {
-  statusText.innerText = "SYSTEM: STABLE";
-  ctx.drawImage(res.image, 0, 0, canvas.width, canvas.height);
+  statusText.innerText = "SYSTEM: SORCERER ACTIVE";
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // --- ระบบกางอาณาเขต (พนมมือประกบกัน) ---
   let isDomain = false;
   if(res.leftHandLandmarks && res.rightHandLandmarks) {
-    const d = Math.sqrt(Math.pow(res.leftHandLandmarks[0].x-res.rightHandLandmarks[0].x,2)+Math.pow(res.leftHandLandmarks[0].y-res.rightHandLandmarks[0].y,2));
-    if(d < 0.08) isDomain = true;
+    const d = Math.sqrt(Math.pow(res.leftHandLandmarks[0].x - res.rightHandLandmarks[0].x, 2) + Math.pow(res.leftHandLandmarks[0].y - res.rightHandLandmarks[0].y, 2));
+    if(d < 0.1) isDomain = true; // ระยะพนมมือ
   }
 
   if (isDomain) {
-    ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle="#fff"; for(let i=0; i<8; i++) ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 1, 1);
+    ctx.fillStyle = "#010105"; 
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // วาดเอฟเฟกต์มิติไร้เขต
+    for(let i=0; i<15; i++) {
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+    }
+  } else if (res.image) {
+    ctx.drawImage(res.image, 0, 0, canvas.width, canvas.height);
   }
 
   const lh = res.leftHandLandmarks, rh = res.rightHandLandmarks;
   const getMode = (lm) => {
     if(!lm) return "n";
     const u = (a, b) => lm[a].y < lm[b].y;
-    if (!u(8,6) && !u(12,10)) return "b"; // Black Flash
+    if (!u(8,6) && !u(12,10) && !u(16,14)) return "b"; // กำหมัดแน่นๆ
     if (u(8,6) && u(12,10)) return "v"; // Blue
     if (u(8,6) && !u(12,10)) return "r"; // Red
     return "n";
@@ -115,13 +145,14 @@ holistic.onResults((res) => {
 
   const lm = getMode(lh), rm = getMode(rh);
 
-  // Purple Check
+  // Purple Check (Red + Blue)
   if (lh && rh && ((lm==="r" && rm==="v") || (lm==="v" && rm==="r"))) {
     const d = Math.sqrt(Math.pow(lh[8].x-rh[8].x,2)+Math.pow(lh[8].y-rh[8].y,2));
-    if (d < 0.12) {
+    if (d < 0.15) {
       const mx = ((lh[8].x+rh[8].x)/2)*canvas.width, my = ((lh[8].y+rh[8].y)/2)*canvas.height;
-      drawEnergyBall(mx, my, 80, "#a020f0", "purple");
-      for(let i=0; i<2; i++) drawLightning(mx,my,"purple");
+      // พลังม่วงใหญ่ขึ้นและเข้มข้นขึ้น
+      drawEnergyBall(mx, my, 120, "#a020f0", "purple"); 
+      for(let i=0; i<4; i++) drawNormalLightning(mx,my,"purple");
       return; 
     }
   }
@@ -129,21 +160,32 @@ holistic.onResults((res) => {
   [lh, rh].forEach(h => {
     if(!h) return;
     const m = getMode(h), ix = h[8].x*canvas.width, iy = h[8].y*canvas.height;
-    if (m==="b") { drawLightning(h[9].x*canvas.width, h[9].y*canvas.height, "red"); }
-    else if (m==="r") { drawEnergyBall(ix, iy, 25, "red", "darkred"); }
-    else if (m==="v") { drawEnergyBall(ix, iy, 30, "cyan", "blue"); }
+    if (m==="b") { 
+        // Black Flash ออกที่หน้าหมัด ( MCP Joint )
+        drawBlackFlashLightning(h[9].x*canvas.width, h[9].y*canvas.height); 
+    }
+    else if (m==="r") { 
+        // บอลแดงใหญ่ขึ้น (ใหญ่กว่าเดิม 2 เท่า)
+        drawEnergyBall(ix, iy, 50, "#ff0000", "#550000"); 
+    }
+    else if (m==="v") { 
+        // บอลฟ้าใหญ่ขึ้น (ใหญ่กว่าเดิม 2 เท่า)
+        drawEnergyBall(ix, iy, 60, "#00ffff", "#000055"); 
+    }
   });
 
-  // ลดการวาดโครงกระดูกให้เหลือแต่จุดสำคัญเพื่อให้ลื่นขึ้น
-  if (lh) drawConnectors(ctx, lh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1});
-  if (rh) drawConnectors(ctx, rh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1});
-  if (res.poseLandmarks) drawConnectors(ctx, res.poseLandmarks, POSE_CONNECTIONS, {color: "#0ff", lineWidth: 1});
+  // วาดโครงร่าง
+  if (lh) drawConnectors(ctx, lh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
+  if (rh) drawConnectors(ctx, rh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
+  if (res.poseLandmarks) drawConnectors(ctx, res.poseLandmarks, POSE_CONNECTIONS, {color: isDomain?"#fff":"#0ff", lineWidth: 1.5});
+  if (res.faceLandmarks) drawConnectors(ctx, res.faceLandmarks, FACEMESH_TESSELATION, {color: "#ffffff33", lineWidth: 0.5});
+  ctx.restore();
 });
 
 btnStart.onclick = () => {
   startOverlay.style.display = 'none';
   resizeCanvas();
-  new Camera(video, { onFrame: async () => { await holistic.send({image: video}); }, width: 480, height: 360 }).start();
+  new Camera(video, { onFrame: async () => { await holistic.send({image: video}); }, width: 640, height: 480 }).start();
 };
 </script>
 </body>
