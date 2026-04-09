@@ -3,173 +3,141 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gojo Power Web - Final Fix</title>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675237345/holistic.js" crossorigin="anonymous"></script>
+  <title>Gojo Power Web - Stable Fix</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675471629/holistic.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js" crossorigin="anonymous"></script>
   <style>
-    body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; color: white; font-family: sans-serif; }
-    .container { position: relative; width: 95vw; max-width: 640px; aspect-ratio: 4/3; background: #111; border-radius: 12px; overflow: hidden; border: 2px solid #333; }
-    video, canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
-    #video { transform: rotateY(180deg); visibility: hidden; }
+    body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+    .container { position: relative; width: 640px; height: 480px; background: #111; border-radius: 12px; overflow: hidden; border: 3px solid #0ff; box-shadow: 0 0 30px rgba(0,255,255,0.4); }
+    video, canvas { position: absolute; left: 0; top: 0; width: 640px; height: 480px; }
+    #video { transform: rotateY(180deg); display: block; opacity: 0; }
     #canvas { transform: rotateY(180deg); }
-    #btn-start { padding: 15px 30px; font-size: 18px; background: #00ffff; border: none; border-radius: 8px; cursor: pointer; color: #000; font-weight: bold; margin-bottom: 10px; box-shadow: 0 0 15px #00ffff; }
-    .status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 5px 12px; border-radius: 20px; font-size: 14px; z-index: 10; border: 1px solid #0ff; pointer-events: none; }
+    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; text-align: center; padding: 20px; }
+    #btn-start { padding: 18px 40px; font-size: 20px; background: linear-gradient(45deg, #00ffff, #0088ff); border: none; border-radius: 50px; cursor: pointer; color: #000; font-weight: bold; margin-top: 15px; box-shadow: 0 0 15px #0ff; transition: 0.3s; }
+    #btn-start:hover { transform: scale(1.1); box-shadow: 0 0 25px #0ff; }
+    .status-badge { position: absolute; top: 15px; left: 15px; background: rgba(0, 255, 255, 0.2); border: 1px solid #0ff; padding: 5px 15px; border-radius: 20px; font-size: 14px; z-index: 50; }
   </style>
 </head>
 <body>
 
-  <button id="btn-start">🔥 ปลดปล่อยไสยเวทย์ (กดเพื่อเริ่ม)</button>
+  <div id="overlay">
+    <h2>⚡ มหาเวทย์ผนึกมาร Web Edition</h2>
+    <p>กรุณากดปุ่มเพื่อเริ่ม และกดยอมรับ "อนุญาตกล้อง"</p>
+    <button id="btn-start">ACTIVATE POWERS</button>
+  </div>
   
   <div class="container">
-    <div class="status" id="status">สถานะ: รอการกดปุ่ม...</div>
+    <div class="status-badge" id="status">STATUS: STANDBY</div>
     <video id="video" playsinline muted></video>
-    <canvas id="canvas"></canvas>
+    <canvas id="canvas" width="640" height="480"></canvas>
   </div>
 
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false });
 const statusText = document.getElementById('status');
 const startBtn = document.getElementById('btn-start');
+const overlay = document.getElementById('overlay');
 
-async function setupCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { width: { ideal: 640 }, height: { ideal: 480 } }
-  });
-  video.srcObject = stream;
-  return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
-}
-
-function getHandMode(landmarks) {
-  if(!landmarks) return "none";
-  const indexUp = landmarks[8].y < landmarks[6].y;
-  const middleUp = landmarks[12].y < landmarks[10].y;
-  const ringUp = landmarks[16].y < landmarks[14].y;
-  const pinkyUp = landmarks[20].y < landmarks[18].y;
-  if (!indexUp && !middleUp && !ringUp && !pinkyUp) return "black_flash";
-  if (indexUp && middleUp && !ringUp) return "blue_vortex";
-  if (indexUp && !middleUp) return "red_repulsion";
+// ฟังก์ชันเช็คโหมดนิ้ว
+function getHandMode(lm) {
+  if(!lm) return "none";
+  const up = (i, j) => lm[i].y < lm[j].y;
+  const index = up(8, 6), mid = up(12, 10), ring = up(16, 14), pinky = up(20, 18);
+  if (!index && !mid && !ring && !pinky) return "black";
+  if (index && mid && !ring) return "blue";
+  if (index && !mid) return "red";
   return "none";
 }
 
 function drawLightning(x, y, color) {
-  ctx.beginPath();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 4;
   ctx.moveTo(x, y);
-  for(let i=0; i<6; i++) {
-    ctx.lineTo(x + (Math.random()-0.5) * 120, y + (Math.random()-0.5) * 120);
-  }
+  for(let i=0; i<6; i++) ctx.lineTo(x + (Math.random()-0.5)*130, y + (Math.random()-0.5)*130);
   ctx.stroke();
 }
 
-async function startApp() {
-  startBtn.style.display = 'none';
-  statusText.innerText = "⚡ กำลังดึงพลังโมเดล...";
-  
-  await setupCamera();
-  video.play();
+async function init() {
+  overlay.style.display = 'none';
+  statusText.innerText = "STATUS: INITIALIZING...";
 
-  // แก้จุดจอดำ: ใช้ URL แบบเจาะจงเพื่อให้โมเดลโหลดติดแน่นอน
-  const holistic = new Holistic({locateFile: (file) => {
-    return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
-  }});
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    video.srcObject = stream;
+    await video.play();
+    statusText.innerText = "STATUS: CAMERA READY";
+  } catch (err) {
+    statusText.innerText = "ERROR: NO CAMERA ACCESS";
+    alert("กล้องไม่ทำงาน! กรุณาเปิดสิทธิ์กล้องในเบราว์เซอร์");
+    return;
+  }
 
-  holistic.setOptions({ 
-    modelComplexity: 1, 
-    smoothLandmarks: true, 
-    minDetectionConfidence: 0.5, 
-    minTrackingConfidence: 0.5 
-  });
+  const holistic = new Holistic({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`});
+  holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true });
 
-  holistic.onResults((results) => {
-    // เซ็ตขนาด Canvas ให้เท่ากับวิดีโอที่เข้ามาจริง
-    if (canvas.width !== video.videoWidth) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-    }
+  holistic.onResults((res) => {
+    if (!res || !res.image) return;
+    statusText.innerText = "STATUS: SORCERER ACTIVE";
 
     ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // วาดภาพจากวิดีโอลง Canvas (ถ้าถึงตรงนี้แล้วจอดำ แสดงว่ากล้องเสีย)
-    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-    statusText.innerText = "🔮 ไสยเวทย์ทำงานแล้ว!";
-
-    // --- กางอาณาเขต ---
+    // ระบบกางอาณาเขต ( Domain Expansion )
     let isDomain = false;
-    if(results.leftHandLandmarks && results.rightHandLandmarks) {
-        const d = Math.sqrt(Math.pow(results.leftHandLandmarks[0].x - results.rightHandLandmarks[0].x, 2) + Math.pow(results.leftHandLandmarks[0].y - results.rightHandLandmarks[0].y, 2));
-        if(d < 0.1) isDomain = true;
+    if(res.leftHandLandmarks && res.rightHandLandmarks) {
+      const d = Math.sqrt(Math.pow(res.leftHandLandmarks[0].x - res.rightHandLandmarks[0].x, 2) + Math.pow(res.leftHandLandmarks[0].y - res.rightHandLandmarks[0].y, 2));
+      if(d < 0.08) isDomain = true;
     }
 
-    if (isDomain) {
-      ctx.fillStyle = "#02000a"; 
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      for(let i=0; i<20; i++) {
-        ctx.fillStyle = "white";
-        ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+    if(isDomain) {
+      ctx.fillStyle = "#010105"; ctx.fillRect(0,0,640,480);
+      for(let i=0; i<20; i++) { ctx.fillStyle="#fff"; ctx.fillRect(Math.random()*640, Math.random()*480, 2, 2); }
+    } else {
+      ctx.drawImage(res.image, 0, 0, 640, 480);
+    }
+
+    const lh = res.leftHandLandmarks, rh = res.rightHandLandmarks;
+    const lm = getHandMode(lh), rm = getHandMode(rh);
+
+    // สีม่วง (Purple Fusion)
+    let purple = false;
+    if(lh && rh && ((lm==="red" && rm==="blue") || (lm==="blue" && rm==="red"))) {
+      const dist = Math.sqrt(Math.pow(lh[8].x - rh[8].x, 2) + Math.pow(lh[8].y - rh[8].y, 2));
+      if(dist < 0.12) {
+        purple = true;
+        const mx = ((lh[8].x + rh[8].x)/2)*640, my = ((lh[8].y + rh[8].y)/2)*480;
+        ctx.shadowBlur = 50; ctx.shadowColor = "purple";
+        let g = ctx.createRadialGradient(mx, my, 5, mx, my, 100);
+        g.addColorStop(0, "#fff"); g.addColorStop(0.3, "#a020f0"); g.addColorStop(1, "transparent");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mx, my, 120, 0, Math.PI*2); ctx.fill();
+        for(let i=0; i<5; i++) drawLightning(mx, my, "purple");
       }
     }
 
-    const leftH = results.leftHandLandmarks;
-    const rightH = results.rightHandLandmarks;
-    const leftMode = getHandMode(leftH);
-    const rightMode = getHandMode(rightH);
-
-    // --- พลังม่วง ---
-    let purpleActivated = false;
-    if (leftH && rightH) {
-      const isRedBlue = (leftMode === "red_repulsion" && rightMode === "blue_vortex") || (rightMode === "red_repulsion" && leftMode === "blue_vortex");
-      if (isRedBlue) {
-        const dist = Math.sqrt(Math.pow(leftH[8].x - rightH[8].x, 2) + Math.pow(leftH[8].y - rightH[8].y, 2));
-        if (dist < 0.15) {
-          purpleActivated = true;
-          const midX = ((leftH[8].x + rightH[8].x) / 2) * canvas.width;
-          const midY = ((leftH[8].y + rightH[8].y) / 2) * canvas.height;
-          ctx.shadowBlur = 50; ctx.shadowColor = "purple";
-          ctx.fillStyle = "purple"; ctx.beginPath(); ctx.arc(midX, midY, 80, 0, Math.PI*2); ctx.fill();
-          ctx.shadowBlur = 0;
-          for(let i=0; i<5; i++) drawLightning(midX, midY, "white");
-        }
-      }
-    }
-
-    // --- พลังแยกข้าง ---
-    if (!purpleActivated) {
-      [leftH, rightH].forEach(hand => {
-        if(!hand) return;
-        const mode = getHandMode(hand);
-        const ix = hand[8].x * canvas.width; const iy = hand[8].y * canvas.height;
-        const kx = hand[9].x * canvas.width; const ky = hand[9].y * canvas.height;
-
-        if (mode === "black_flash") {
-          drawLightning(kx, ky, "red"); drawLightning(kx, ky, "black");
-        } else if (mode === "red_repulsion") {
-          ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(ix, iy, 25, 0, Math.PI*2); ctx.fill();
-        } else if (mode === "blue_vortex") {
-          ctx.fillStyle = "cyan"; ctx.beginPath(); ctx.arc(ix, iy, 30, 0, Math.PI*2); ctx.fill();
-        }
+    if(!purple) {
+      [lh, rh].forEach(h => {
+        if(!h) return;
+        const m = getHandMode(h), ix = h[8].x*640, iy = h[8].y*480, kx = h[9].x*640, ky = h[9].y*480;
+        if(m==="black") { ctx.shadowBlur=30; ctx.shadowColor="red"; drawLightning(kx,ky,"red"); drawLightning(kx,ky,"black"); }
+        else if(m==="red") { ctx.shadowBlur=25; ctx.shadowColor="red"; ctx.fillStyle="red"; ctx.beginPath(); ctx.arc(ix,iy,25,0,6.28); ctx.fill(); }
+        else if(m==="blue") { ctx.shadowBlur=25; ctx.shadowColor="cyan"; ctx.fillStyle="cyan"; ctx.beginPath(); ctx.arc(ix,iy,30,0,6.28); ctx.fill(); }
       });
     }
 
-    // วาดโครงร่าง
-    if (results.poseLandmarks) drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {color: isDomain ? "white" : "cyan", lineWidth: 2});
-    if (leftH) drawConnectors(ctx, leftH, HAND_CONNECTIONS, {color: "white", lineWidth: 2});
-    if (rightH) drawConnectors(ctx, rightH, HAND_CONNECTIONS, {color: "white", lineWidth: 2});
-
+    if(res.faceLandmarks) drawConnectors(ctx, res.faceLandmarks, FACEMESH_TESSELATION, {color: "#ffffff33", lineWidth: 0.5});
+    if(res.poseLandmarks) drawConnectors(ctx, res.poseLandmarks, POSE_CONNECTIONS, {color: isDomain?"#fff":"#0ff", lineWidth: 1.5});
+    if(lh) drawConnectors(ctx, lh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
+    if(rh) drawConnectors(ctx, rh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
     ctx.restore();
   });
 
-  async function predict() {
-    await holistic.send({image: video});
-    requestAnimationFrame(predict);
+  function predict() {
+    holistic.send({image: video});
+    video.requestVideoFrameCallback ? video.requestVideoFrameCallback(predict) : requestAnimationFrame(predict);
   }
   predict();
 }
 
-startBtn.addEventListener('click', startApp);
+startBtn.onclick = init;
 </script>
 </body>
 </html>
