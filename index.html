@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gojo Power Web</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <style>
+    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: sans-serif; overflow: hidden; }
+    .container { position: relative; width: 640px; height: 480px; background: #111; border-radius: 12px; overflow: hidden; box-shadow: 0 0 20px rgba(0,255,255,0.2); }
+    video, canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+    #video { transform: rotateY(180deg); opacity: 0; }
+    #canvas { transform: rotateY(180deg); }
+    .status { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px; font-size: 12px; z-index: 10; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="status">สถานะ: กำลังโหลดโมเดล...</div>
+    <video id="video" playsinline></video>
+    <canvas id="canvas"></canvas>
+  </div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+const statusText = document.querySelector('.status');
+
+async function setupCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: 640, height: 480, frameRate: { ideal: 30 } }
+  });
+  video.srcObject = stream;
+  return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
+}
+
+function getHandMode(landmarks) {
+  if(!landmarks) return "none";
+  const indexUp = landmarks[8].y < landmarks[6].y;
+  const middleUp = landmarks[12].y < landmarks[10].y;
+  const ringUp = landmarks[16].y < landmarks[14].y;
+  const pinkyUp = landmarks[20].y < landmarks[18].y;
+  if (!indexUp && !middleUp && !ringUp && !pinkyUp) return "black_flash";
+  if (indexUp && middleUp && !ringUp) return "blue_vortex";
+  if (indexUp && !middleUp) return "red_repulsion";
+  return "none";
+}
+
+function drawLightning(x, y, color) {
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.moveTo(x, y);
+  for(let i=0; i<6; i++) {
+    const tx = x + (Math.random()-0.5) * 120;
+    const ty = y + (Math.random()-0.5) * 120;
+    ctx.lineTo(tx, ty);
+  }
+  ctx.stroke();
+}
+
+async function main() {
+  await setupCamera();
+  video.play();
+  statusText.innerText = "สถานะ: พร้อมใช้งาน (ห้ามปิดกล้อง)";
+
+  const holistic = new Holistic({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`});
+
+  holistic.setOptions({ 
+    modelComplexity: 1, 
+    smoothLandmarks: true, 
+    minDetectionConfidence: 0.5, 
+    minTrackingConfidence: 0.5 
+  });
+
+  holistic.onResults((results) => {
+    if (!results || !results.image) return;
+    ctx.save();
+    
+    // --- ระบบกางอาณาเขต ---
+    let isDomain = false;
+    if(results.leftHandLandmarks && results.rightHandLandmarks) {
+        const d = Math.sqrt(
+            Math.pow(results.leftHandLandmarks[0].x - results.rightHandLandmarks[0].x, 2) + 
+            Math.pow(results.leftHandLandmarks[0].y - results.rightHandLandmarks[0].y, 2)
+        );
+        if(d < 0.1) isDomain = true;
+    }
+
+    if (isDomain) {
+      ctx.fillStyle = "#02000a"; 
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for(let i=0; i<15; i++) {
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+      }
+    } else {
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+    }
+    
+    const leftH = results.leftHandLandmarks;
+    const rightH = results.rightHandLandmarks;
+    const leftMode = getHandMode(leftH);
+    const rightMode = getHandMode(rightH);
+
+    let purpleActivated = false;
+    if (leftH && rightH) {
+      const isRedBlue = (leftMode === "red_repulsion" && rightMode === "blue_vortex") || 
+                        (rightMode === "red_repulsion" && leftMode === "blue_vortex");
+      
+      if (isRedBlue) {
+        const dist = Math.sqrt(Math.pow(leftH[8].x - rightH[8].x, 2) + Math.pow(leftH[8].y - rightH[8].y, 2));
+        if (dist < 0.15) {
+          purpleActivated = true;
+          const midX = ((leftH[8].x + rightH[8].x) / 2) * canvas.width;
+          const midY = ((leftH[8].y + rightH[8].y) / 2) * canvas.height;
+          ctx.shadowBlur = 60; ctx.shadowColor = "purple";
+          let grad = ctx.createRadialGradient(midX, midY, 0, midX, midY, 100);
+          grad.addColorStop(0, "white"); grad.addColorStop(0.3, "#a020f0"); grad.addColorStop(1, "rgba(50, 0, 100, 0)");
+          ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(midX, midY, 110, 0, Math.PI*2); ctx.fill();
+          ctx.shadowBlur = 0; ctx.strokeStyle = "white"; ctx.lineWidth = 2;
+          for(let i=0; i<8; i++) {
+            ctx.beginPath(); ctx.moveTo(midX, midY);
+            ctx.lineTo(midX + (Math.random()-0.5)*250, midY + (Math.random()-0.5)*250);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    if (!purpleActivated) {
+      [leftH, rightH].forEach(hand => {
+        if(!hand) return;
+        const mode = getHandMode(hand);
+        const ix = hand[8].x * canvas.width; const iy = hand[8].y * canvas.height;
+        const kx = hand[9].x * canvas.width; const ky = hand[9].y * canvas.height;
+
+        if (mode === "black_flash") {
+          ctx.shadowBlur = 30; ctx.shadowColor = "red";
+          drawLightning(kx, ky, "#ff0000"); drawLightning(kx, ky, "#000000");
+        } else if (mode === "red_repulsion") {
+          ctx.shadowBlur = 25; ctx.shadowColor = "red"; ctx.fillStyle = "red";
+          ctx.beginPath(); ctx.arc(ix, iy, 25, 0, Math.PI*2); ctx.fill();
+        } else if (mode === "blue_vortex") {
+          ctx.shadowBlur = 25; ctx.shadowColor = "cyan"; ctx.fillStyle = "cyan";
+          ctx.beginPath(); ctx.arc(ix, iy, 30, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      });
+    }
+
+    if (results.faceLandmarks) drawConnectors(ctx, results.faceLandmarks, FACEMESH_TESSELATION, {color: "rgba(255,255,255,0.2)", lineWidth: 0.5});
+    if (results.poseLandmarks) drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {color: isDomain ? "white" : "cyan", lineWidth: 1.5});
+    if (leftH) drawConnectors(ctx, leftH, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
+    if (rightH) drawConnectors(ctx, rightH, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
+
+    ctx.restore();
+  });
+
+  function predict() {
+    if (video.readyState >= 2) {
+      holistic.send({image: video});
+    }
+    video.requestVideoFrameCallback ? video.requestVideoFrameCallback(predict) : requestAnimationFrame(predict);
+  }
+  predict();
+}
+main();
+</script>
+</body>
+</html>
+
