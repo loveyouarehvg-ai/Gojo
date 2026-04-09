@@ -3,47 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gojo Power Web - Fix Black Screen</title>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <title>Gojo Power Web - Final Fix</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675237345/holistic.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js" crossorigin="anonymous"></script>
   <style>
-    body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; color: white; font-family: sans-serif; overflow: hidden; }
-    .container { position: relative; width: 640px; height: 480px; background: #111; border-radius: 12px; overflow: hidden; border: 2px solid #333; }
-    video, canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
-    #video { transform: rotateY(180deg); opacity: 0; }
+    body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; color: white; font-family: sans-serif; }
+    .container { position: relative; width: 95vw; max-width: 640px; aspect-ratio: 4/3; background: #111; border-radius: 12px; overflow: hidden; border: 2px solid #333; }
+    video, canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+    #video { transform: rotateY(180deg); visibility: hidden; }
     #canvas { transform: rotateY(180deg); }
-    #btn-start { padding: 15px 30px; font-size: 18px; background: #00ffff; border: none; border-radius: 8px; cursor: pointer; color: #000; font-weight: bold; z-index: 100; position: absolute; }
-    .status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 20px; font-size: 14px; z-index: 10; border: 1px solid #0ff; }
+    #btn-start { padding: 15px 30px; font-size: 18px; background: #00ffff; border: none; border-radius: 8px; cursor: pointer; color: #000; font-weight: bold; margin-bottom: 10px; box-shadow: 0 0 15px #00ffff; }
+    .status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 5px 12px; border-radius: 20px; font-size: 14px; z-index: 10; border: 1px solid #0ff; pointer-events: none; }
   </style>
 </head>
 <body>
 
-  <button id="btn-start">คลิกเพื่อเริ่ม (อนุญาตใช้กล้อง)</button>
+  <button id="btn-start">🔥 ปลดปล่อยไสยเวทย์ (กดเพื่อเริ่ม)</button>
   
   <div class="container">
-    <div class="status" id="status">สถานะ: รอการกดเริ่ม...</div>
-    <video id="video" playsinline></video>
+    <div class="status" id="status">สถานะ: รอการกดปุ่ม...</div>
+    <video id="video" playsinline muted></video>
     <canvas id="canvas"></canvas>
   </div>
 
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+const ctx = canvas.getContext('2d');
 const statusText = document.getElementById('status');
 const startBtn = document.getElementById('btn-start');
 
 async function setupCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, frameRate: { ideal: 30 } }
-    });
-    video.srcObject = stream;
-    return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
-  } catch (err) {
-    alert("เข้าถึงกล้องไม่ได้! กรุณากดอนุญาตสิทธิ์การใช้กล้อง");
-    statusText.innerText = "Error: กล้องถูกบล็อก";
-  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 640 }, height: { ideal: 480 } }
+  });
+  video.srcObject = stream;
+  return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
 }
 
 function getHandMode(landmarks) {
@@ -71,12 +66,15 @@ function drawLightning(x, y, color) {
 
 async function startApp() {
   startBtn.style.display = 'none';
-  statusText.innerText = "สถานะ: กำลังโหลดโมเดล...";
+  statusText.innerText = "⚡ กำลังดึงพลังโมเดล...";
   
   await setupCamera();
   video.play();
 
-  const holistic = new Holistic({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`});
+  // แก้จุดจอดำ: ใช้ URL แบบเจาะจงเพื่อให้โมเดลโหลดติดแน่นอน
+  const holistic = new Holistic({locateFile: (file) => {
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
+  }});
 
   holistic.setOptions({ 
     modelComplexity: 1, 
@@ -86,62 +84,59 @@ async function startApp() {
   });
 
   holistic.onResults((results) => {
-    if (!results || !results.image) return;
-    statusText.innerText = "สถานะ: กำลังรันพลังไสยเวทย์";
+    // เซ็ตขนาด Canvas ให้เท่ากับวิดีโอที่เข้ามาจริง
+    if (canvas.width !== video.videoWidth) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+    }
 
     ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // --- ระบบกางอาณาเขต ---
+    // วาดภาพจากวิดีโอลง Canvas (ถ้าถึงตรงนี้แล้วจอดำ แสดงว่ากล้องเสีย)
+    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+    statusText.innerText = "🔮 ไสยเวทย์ทำงานแล้ว!";
+
+    // --- กางอาณาเขต ---
     let isDomain = false;
     if(results.leftHandLandmarks && results.rightHandLandmarks) {
-        const d = Math.sqrt(
-            Math.pow(results.leftHandLandmarks[0].x - results.rightHandLandmarks[0].x, 2) + 
-            Math.pow(results.leftHandLandmarks[0].y - results.rightHandLandmarks[0].y, 2)
-        );
+        const d = Math.sqrt(Math.pow(results.leftHandLandmarks[0].x - results.rightHandLandmarks[0].x, 2) + Math.pow(results.leftHandLandmarks[0].y - results.rightHandLandmarks[0].y, 2));
         if(d < 0.1) isDomain = true;
     }
 
     if (isDomain) {
       ctx.fillStyle = "#02000a"; 
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      for(let i=0; i<15; i++) {
-        ctx.fillStyle = "rgba(255,255,255,0.6)";
+      for(let i=0; i<20; i++) {
+        ctx.fillStyle = "white";
         ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
       }
-    } else {
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
     }
-    
+
     const leftH = results.leftHandLandmarks;
     const rightH = results.rightHandLandmarks;
     const leftMode = getHandMode(leftH);
     const rightMode = getHandMode(rightH);
 
+    // --- พลังม่วง ---
     let purpleActivated = false;
     if (leftH && rightH) {
-      const isRedBlue = (leftMode === "red_repulsion" && rightMode === "blue_vortex") || 
-                        (rightMode === "red_repulsion" && leftMode === "blue_vortex");
-      
+      const isRedBlue = (leftMode === "red_repulsion" && rightMode === "blue_vortex") || (rightMode === "red_repulsion" && leftMode === "blue_vortex");
       if (isRedBlue) {
         const dist = Math.sqrt(Math.pow(leftH[8].x - rightH[8].x, 2) + Math.pow(leftH[8].y - rightH[8].y, 2));
         if (dist < 0.15) {
           purpleActivated = true;
           const midX = ((leftH[8].x + rightH[8].x) / 2) * canvas.width;
           const midY = ((leftH[8].y + rightH[8].y) / 2) * canvas.height;
-          ctx.shadowBlur = 60; ctx.shadowColor = "purple";
-          let grad = ctx.createRadialGradient(midX, midY, 0, midX, midY, 100);
-          grad.addColorStop(0, "white"); grad.addColorStop(0.3, "#a020f0"); grad.addColorStop(1, "rgba(50, 0, 100, 0)");
-          ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(midX, midY, 110, 0, Math.PI*2); ctx.fill();
-          ctx.shadowBlur = 0; ctx.strokeStyle = "white"; ctx.lineWidth = 2;
-          for(let i=0; i<8; i++) {
-            ctx.beginPath(); ctx.moveTo(midX, midY);
-            ctx.lineTo(midX + (Math.random()-0.5)*250, midY + (Math.random()-0.5)*250);
-            ctx.stroke();
-          }
+          ctx.shadowBlur = 50; ctx.shadowColor = "purple";
+          ctx.fillStyle = "purple"; ctx.beginPath(); ctx.arc(midX, midY, 80, 0, Math.PI*2); ctx.fill();
+          ctx.shadowBlur = 0;
+          for(let i=0; i<5; i++) drawLightning(midX, midY, "white");
         }
       }
     }
 
+    // --- พลังแยกข้าง ---
     if (!purpleActivated) {
       [leftH, rightH].forEach(hand => {
         if(!hand) return;
@@ -150,19 +145,31 @@ async function startApp() {
         const kx = hand[9].x * canvas.width; const ky = hand[9].y * canvas.height;
 
         if (mode === "black_flash") {
-          ctx.shadowBlur = 30; ctx.shadowColor = "red";
-          drawLightning(kx, ky, "#ff0000"); drawLightning(kx, ky, "#000000");
+          drawLightning(kx, ky, "red"); drawLightning(kx, ky, "black");
         } else if (mode === "red_repulsion") {
-          ctx.shadowBlur = 25; ctx.shadowColor = "red"; ctx.fillStyle = "red";
-          ctx.beginPath(); ctx.arc(ix, iy, 25, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(ix, iy, 25, 0, Math.PI*2); ctx.fill();
         } else if (mode === "blue_vortex") {
-          ctx.shadowBlur = 25; ctx.shadowColor = "cyan"; ctx.fillStyle = "cyan";
-          ctx.beginPath(); ctx.arc(ix, iy, 30, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = "cyan"; ctx.beginPath(); ctx.arc(ix, iy, 30, 0, Math.PI*2); ctx.fill();
         }
-        ctx.shadowBlur = 0;
       });
     }
 
-    if (results.faceLandmarks) drawConnectors(ctx, results.faceLandmarks, FACEMESH_TESSELATION, {color: "rgba(255,255,255,0.2)", lineWidth: 0.5});
-    if
-  
+    // วาดโครงร่าง
+    if (results.poseLandmarks) drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {color: isDomain ? "white" : "cyan", lineWidth: 2});
+    if (leftH) drawConnectors(ctx, leftH, HAND_CONNECTIONS, {color: "white", lineWidth: 2});
+    if (rightH) drawConnectors(ctx, rightH, HAND_CONNECTIONS, {color: "white", lineWidth: 2});
+
+    ctx.restore();
+  });
+
+  async function predict() {
+    await holistic.send({image: video});
+    requestAnimationFrame(predict);
+  }
+  predict();
+}
+
+startBtn.addEventListener('click', startApp);
+</script>
+</body>
+</html>
