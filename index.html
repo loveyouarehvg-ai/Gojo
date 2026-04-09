@@ -3,180 +3,183 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GOJO GENESIS - SPECIAL GRADE</title>
+  <title>Gojo AI - Six Eyes Unleashed V4</title>
   
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 
   <style>
-    :root { --main-color: #00f2ff; --glow: rgba(0, 242, 255, 0.5); }
-    body { margin: 0; background: #000; color: #fff; font-family: 'Orbitron', sans-serif; overflow: hidden; }
+    :root { --main: #0ff; --red-dark: #800; --purple: #a020f0; }
+    body { margin: 0; background: #000; color: white; font-family: 'Courier New', monospace; height: 100vh; width: 100vw; overflow: hidden; display: flex; align-items: center; justify-content: center; }
     
     /* Layout */
-    .app-container { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #00151a 0%, #000 100%); }
-    .screen { position: relative; width: 100%; max-width: 1200px; aspect-ratio: 4/3; border: 1px solid rgba(0, 242, 255, 0.2); overflow: hidden; }
-    video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotateY(180deg); object-fit: cover; }
+    .container { position: relative; width: 100vw; aspect-ratio: 4 / 3; background: #000; overflow: hidden; border-top: 1px solid #333; border-bottom: 1px solid #333; box-shadow: 0 0 50px rgba(0,255,255,0.1); }
+    video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; transform: rotateY(180deg); }
     #video { display: none; }
+    #canvas { z-index: 5; }
 
-    /* UI Layer - HUD */
-    .hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; border: 15px solid transparent; }
-    .scanline { position: absolute; width: 100%; height: 2px; background: rgba(0, 242, 255, 0.2); top: 0; animation: scan 3s linear infinite; }
-    @keyframes scan { from { top: 0; } to { top: 100%; } }
-
-    .side-bar { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); width: 4px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 2px; }
-    .side-bar-fill { position: absolute; bottom: 0; width: 100%; height: 60%; background: var(--main-color); box-shadow: 0 0 15px var(--main-color); transition: 0.2s; }
-
-    .info-box { position: absolute; bottom: 30px; left: 30px; font-family: monospace; font-size: 12px; color: var(--main-color); background: rgba(0,0,0,0.6); padding: 10px; border-left: 3px solid var(--main-color); backdrop-filter: blur(5px); }
+    /* UI Layer - HUD (อันเดิมที่ท่านชอบ) */
+    .hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; padding: 20px; box-sizing: border-box; }
+    .status-badge { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 5px 15px; border-radius: 20px; font-size: 12px; border: 1px solid var(--main); color: var(--main); letter-spacing: 2px; text-transform: uppercase; }
+    .info-panel { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; font-size: 10px; color: var(--main); font-family: monospace; text-align: right; border-left: 2px solid var(--main); }
 
     /* Start Overlay */
-    #overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .title { font-size: 30px; letter-spacing: 15px; color: var(--main-color); text-shadow: 0 0 20px var(--main-color); margin-bottom: 50px; }
-    .start-btn { padding: 15px 60px; background: none; border: 1px solid var(--main-color); color: var(--main-color); font-weight: bold; cursor: pointer; letter-spacing: 5px; transition: 0.3s; }
-    .start-btn:hover { background: var(--main-color); color: #000; box-shadow: 0 0 40px var(--main-color); }
+    #start-overlay { position: fixed; inset: 0; background: radial-gradient(circle, #111, #000); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; }
+    .logo { font-size: 2rem; letter-spacing: 15px; margin-bottom: 30px; text-shadow: 0 0 20px var(--main); color: #fff; font-weight: bold; }
+    
+    button { 
+      padding: 15px 50px; background: transparent; border: 1px solid var(--main); color: var(--main); 
+      cursor: pointer; letter-spacing: 5px; font-weight: bold; transition: 0.3s;
+    }
+    button:hover { background: var(--main); color: #000; box-shadow: 0 0 40px var(--main); }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div id="overlay">
-  <div class="title">SIX EYES V4</div>
-  <button class="start-btn" onclick="init()">INITIALIZE</button>
-</div>
-
-<div class="app-container">
-  <div class="screen">
-    <div class="hud">
-      <div class="scanline"></div>
-      <div class="side-bar"><div class="side-bar-fill" id="power-bar"></div></div>
-      <div class="info-box" id="info">SYSTEM: STANDBY<br>NEURAL: DISCONNECTED</div>
-    </div>
-    <video id="video" playsinline></video>
-    <canvas id="canvas"></canvas>
+  <div id="start-overlay">
+    <div class="logo">SIX EYES</div>
+    <button id="btn-start">ACTIVATE SYSTEM</button>
   </div>
-</div>
+
+  <div class="container">
+    <div class="hud">
+      <div class="status-badge">SYSTEM: ONLINE</div>
+      <div class="info-panel" id="info">VELOCITY: 0.00ms<br>CE_OUTPUT: CALIBRATING</div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <video id="video" playsinline></video>
+  </div>
 
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const info = document.getElementById('info');
-const powerBar = document.getElementById('power-bar');
-let rotation = 0;
+const startOverlay = document.getElementById('start-overlay');
+const btnStart = document.getElementById('btn-start');
 
-function drawEffect(x, y, radius, color, isPurple = false) {
-  // วาดวงแหวนหมุนๆ
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotation);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.setLineDash([10, 5]);
-  ctx.beginPath();
-  ctx.arc(0, 0, radius + 20, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-  rotation += 0.05;
-
-  // วาดตัวพลัง
-  const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-  grad.addColorStop(0, '#fff');
-  grad.addColorStop(0.3, color);
-  grad.addColorStop(1, 'transparent');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.fill();
+function resizeCanvas() {
+  canvas.width = 1280; // เพิ่มความละเอียดภาพเพื่อให้เอฟเฟกต์ชัดขึ้น
+  canvas.height = 960; 
 }
 
-function drawBlackFlash(x, y) {
-  for(let i=0; i<15; i++) {
+// 🔥🔥 NEW! ฟังก์ชันวาด Black Flash แบบโค้ดเท่ ดุดัน ระเบิดออกจากกำหมัด 🔥🔥
+function drawBlackFlashUnleashed(x, y) {
+  ctx.save();
+  
+  // 1. วาดออร่าสีแดงทมิฬ (ชั้นนอก) - เส้นหนาและพุ่งไกล
+  for(let i=0; i<10; i++) {
     ctx.beginPath();
-    ctx.strokeStyle = i % 2 === 0 ? "#f00" : "#000";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = `rgba(255, 0, 0, ${0.8 - i*0.05})`; // ไล่ระดับความใส
+    ctx.lineWidth = 10; // เส้นหนามาก
     ctx.moveTo(x, y);
-    ctx.lineTo(x+(Math.random()-0.5)*500, y+(Math.random()-0.5)*500);
+    ctx.lineTo(x+(Math.random()-0.5)*600, y+(Math.random()-0.5)*600); // พุ่งไกลมาก
     ctx.stroke();
   }
+
+  // 2. วาดสายฟ้าสีดำทมิฬ (ชั้นใน) - เส้นหนาปานกลางสลับเล็ก
+  for(let i=0; i<8; i++) {
+    ctx.beginPath();
+    ctx.strokeStyle = "#000000"; 
+    ctx.lineWidth = i % 2 === 0 ? 6 : 3; // เส้นหนาสลับเล็ก
+    ctx.moveTo(x, y);
+    ctx.lineTo(x+(Math.random()-0.5)*600, y+(Math.random()-0.5)*600); // พุ่งไกลมาก
+    ctx.stroke();
+  }
+  
+  // 3. วาดแกนกลางพลังสีขาวระเบิด
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, 60);
+  grad.addColorStop(0, '#fff'); grad.addColorStop(0.5, 'rgba(255, 0, 0, 0.5)');
+  grad.addColorStop(1, 'transparent');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, 80, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawEnergy(x, y, radius, colorInner, colorOuter) {
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  grad.addColorStop(0, '#fff'); grad.addColorStop(0.2, colorInner);
+  grad.addColorStop(0.7, colorOuter); grad.addColorStop(1, 'transparent');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
 }
 
 const holistic = new Holistic({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`});
-holistic.setOptions({ modelComplexity: 1, refineFaceLandmarks: true });
+holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true, refineFaceLandmarks: true });
 
 holistic.onResults((res) => {
   ctx.save();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  // Background & Domain
+
   let isDomain = false;
   if(res.leftHandLandmarks && res.rightHandLandmarks) {
     const d = Math.abs(res.leftHandLandmarks[0].x - res.rightHandLandmarks[0].x);
-    if(d < 0.04) isDomain = true;
+    if(d < 0.05) isDomain = true;
   }
 
   if (isDomain) {
-    ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
-    for(let i=0; i<50; i++) {
+    // พื้นหลังปางอาณาเขต (หลุมดำ/อวกาศลึกลับ)
+    ctx.fillStyle = "#00000a"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    for(let i=0; i<100; i++) {
       ctx.fillStyle = "#fff"; ctx.beginPath();
-      ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, 2, 0, Math.PI*2); ctx.fill();
+      ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*2, 0, Math.PI*2); ctx.fill();
     }
-    info.innerHTML = "SYSTEM: DOMAIN EXPANSION<br>INFINITE VOID ACTIVE";
-    powerBar.style.height = "100%";
-  } else {
-    if (res.image) ctx.drawImage(res.image, 0, 0, canvas.width, canvas.height);
-    info.innerHTML = `SYSTEM: ANALYSIS ACTIVE<br>STABILITY: ${Math.floor(Math.random()*20 + 80)}%`;
-    powerBar.style.height = "40%";
+  } else if (res.image) {
+    ctx.drawImage(res.image, 0, 0, canvas.width, canvas.height);
+    info.innerHTML = `LATENCY: ${(Math.random()*5).toFixed(2)}ms<br>CE_OUTPUT: ${(Math.random()*1000).toFixed(0)}<br>SIX_EYES: ACTIVE`;
   }
 
-  // Face Mesh
+  // --- Face Mesh (หน้าตาข่ายแวววาว ไฮเทค เหมือนเดิม) ---
   if (res.faceLandmarks) {
-    drawConnectors(ctx, res.faceLandmarks, FACEMESH_TESSELATION, {color: "#00f2ff33", lineWidth: 0.5});
-    drawConnectors(ctx, res.faceLandmarks, FACEMESH_CONTOURS, {color: "#00f2ffaa", lineWidth: 1});
+    drawConnectors(ctx, res.faceLandmarks, FACEMESH_TESSELATION, {color: "#00ffff33", lineWidth: 0.5});
+    drawConnectors(ctx, res.faceLandmarks, FACEMESH_CONTOURS, {color: "#00ffffaa", lineWidth: 1});
   }
 
-  const getGesture = (lm) => {
-    if(!lm) return "none";
+  const getMode = (lm) => {
+    if(!lm) return "n";
     const u = (a, b) => lm[a].y < lm[b].y;
-    if (!u(8,6) && !u(12,10)) return "fist";
-    if (u(8,6) && u(12,10)) return "blue";
-    if (u(8,6) && !u(12,10)) return "red";
-    return "none";
+    if (!u(8,6) && !u(12,10)) return "f"; // fist
+    if (u(8,6) && u(12,10)) return "v"; // blue
+    if (u(8,6) && !u(12,10)) return "r"; // red
+    return "n";
   };
 
-  const lm = getGesture(res.leftHandLandmarks);
-  const rm = getGesture(res.rightHandLandmarks);
+  const lh = res.leftHandLandmarks, rh = res.rightHandLandmarks;
+  const lm = getMode(lh), rm = getMode(rh);
 
-  // Purple
-  if ((lm==="red" && rm==="blue") || (lm==="blue" && rm==="red")) {
+  // Purple ( Combination )
+  if (lh && rh && ((lm==="r" && rm==="v") || (lm==="v" && rm==="r"))) {
     const mx = canvas.width/2, my = canvas.height/2;
-    drawEffect(mx, my, 350, "#a020f0");
+    drawEnergy(mx, my, 280, "#a020f0", "#4b0082");
   } else {
-    [res.leftHandLandmarks, res.rightHandLandmarks].forEach(h => {
+    // Single Hand Powers
+    [lh, rh].forEach(h => {
       if(!h) return;
-      const m = getGesture(h);
-      const x = h[8].x * canvas.width, y = h[8].y * canvas.height;
-      if (m === "fist") drawBlackFlash(h[9].x*canvas.width, h[9].y*canvas.height);
-      if (m === "red") drawEffect(x, y, 160, "#f00");
-      if (m === "blue") drawEffect(x, y, 190, "#00f2ff");
+      const m = getMode(h);
+      const x = h[8].x * canvas.width;
+      const y = h[8].y * canvas.height;
+      if (m === "f") {
+          // 🔥🔥 NEW! Black Flash ระเบิดกำหมัดดุดันออกจากหน้าหมัด 🔥🔥
+          drawBlackFlashUnleashed(h[9].x*canvas.width, h[9].y*canvas.height); 
+      }
+      else if (m === "r") { drawEnergy(x, y, 160, "#ff0000", "#660000"); } // พลังแดงยักษ์ ล็อคปลายนิ้ว
+      else if (m === "v") { drawEnergy(x, y, 190, "#00ffff", "#000088"); } // พลังฟ้ายักษ์ ล็อคปลายนิ้ว
     });
   }
 
-  // Skeletons
-  if(res.leftHandLandmarks) drawConnectors(ctx, res.leftHandLandmarks, HAND_CONNECTIONS, {color: "#fff", lineWidth: 2});
-  if(res.rightHandLandmarks) drawConnectors(ctx, res.rightHandLandmarks, HAND_CONNECTIONS, {color: "#fff", lineWidth: 2});
-  
+  // Draw Skeleton ลื่นๆ
+  if (lh) drawConnectors(ctx, lh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 2});
+  if (rh) drawConnectors(ctx, rh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 2});
+  if (res.poseLandmarks) drawConnectors(ctx, res.poseLandmarks, POSE_CONNECTIONS, {color: "#0ff", lineWidth: 1.5});
+
   ctx.restore();
 });
 
-async function init() {
-  document.getElementById('overlay').style.display = 'none';
-  canvas.width = 1280; canvas.height = 960;
-  const camera = new Camera(video, {
-    onFrame: async () => { await holistic.send({image: video}); },
-    width: 1280, height: 960
-  });
-  camera.start();
-}
+btnStart.onclick = () => {
+  startOverlay.style.display = 'none';
+  resizeCanvas();
+  new Camera(video, { onFrame: async () => { await holistic.send({image: video}); }, width: 1280, height: 960 }).start();
+};
 </script>
 </body>
 </html>
