@@ -2,33 +2,100 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gojo Power Web - Final Ultra Fix</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gojo AI - 4:3 Minimal Edition</title>
   
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 
   <style>
-    body { margin: 0; background: #000; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-    .container { position: relative; width: 90vw; max-width: 640px; aspect-ratio: 4/3; border: 2px solid #0ff; border-radius: 10px; overflow: hidden; background: #111; }
-    video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-    #video { transform: rotateY(180deg); display: none; }
-    #canvas { transform: rotateY(180deg); z-index: 5; }
-    .status-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 20px; font-size: 12px; border: 1px solid #0ff; z-index: 20; }
-    #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-    button { padding: 15px 40px; font-size: 20px; background: #0ff; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px #0ff; }
+    body { margin: 0; background: #000; color: white; font-family: 'Courier New', Courier, monospace; height: 100vh; width: 100vw; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    
+    /* ล็อค Container เป็น 4:3 และจัดให้อยู่กลางจอ */
+    .container { 
+      position: relative; 
+      width: 100vw; 
+      max-height: 75vw; /* สัดส่วน 4:3 */
+      aspect-ratio: 4 / 3;
+      background: #050505; 
+      overflow: hidden; 
+      box-shadow: 0 0 50px rgba(0, 255, 255, 0.1);
+      border-top: 1px solid #111;
+      border-bottom: 1px solid #111;
+    }
+
+    video, canvas { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      object-fit: contain;
+      transform: rotateY(180deg); 
+    }
+
+    #video { display: none; }
+    #canvas { z-index: 5; }
+
+    /* ตกแต่ง Status ให้ดูมินิมอลไฮเทค */
+    .status-badge { 
+      position: absolute; 
+      top: 15px; 
+      left: 15px; 
+      background: rgba(0, 255, 255, 0.1); 
+      padding: 5px 12px; 
+      border-radius: 2px; 
+      font-size: 10px; 
+      letter-spacing: 1px;
+      border-left: 3px solid #0ff; 
+      z-index: 20; 
+      text-transform: uppercase;
+    }
+
+    #start-overlay { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: #000; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      z-index: 100; 
+    }
+
+    button { 
+      padding: 15px 40px; 
+      font-size: 14px; 
+      background: transparent; 
+      border: 1px solid #0ff; 
+      color: #0ff;
+      border-radius: 0; 
+      font-weight: lighter; 
+      cursor: pointer; 
+      letter-spacing: 4px;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #0ff;
+      color: #000;
+      box-shadow: 0 0 20px #0ff;
+    }
   </style>
 </head>
 <body>
 
   <div id="start-overlay">
-    <h2 style="color: #0ff; margin-bottom: 20px;">⚡ มหาเวทย์ผนึกมาร Web</h2>
-    <button id="btn-start">ACTIVATE</button>
+    <h1 style="color: #fff; font-size: 18px; margin-bottom: 30px; font-weight: 100; letter-spacing: 8px;">SIX EYES SYSTEM</h1>
+    <button id="btn-start">INITIALIZE</button>
   </div>
 
   <div class="container">
-    <div class="status-badge" id="status-text">STATUS: WAITING...</div>
+    <div class="status-badge" id="status-text">SYSTEM: IDLE</div>
     <video id="video" playsinline></video>
     <canvas id="canvas"></canvas>
   </div>
@@ -36,21 +103,21 @@
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 const statusText = document.getElementById('status-text');
 const startOverlay = document.getElementById('start-overlay');
 const btnStart = document.getElementById('btn-start');
 
-// ปรับขนาด Canvas ให้ตรงกับหน้าจอจริง
 function resizeCanvas() {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
+  // ล็อคความละเอียดภายในที่ 4:3
+  canvas.width = 640; 
+  canvas.height = 480; 
 }
-window.addEventListener('resize', resizeCanvas);
 
 function getHandMode(lm) {
   if(!lm) return "none";
-  const index = lm[8].y < lm[6].y, mid = lm[12].y < lm[10].y, ring = lm[16].y < lm[14].y, pinky = lm[20].y < lm[18].y;
+  const up = (a, b) => lm[a].y < lm[b].y;
+  const index = up(8, 6), mid = up(12, 10), ring = up(16, 14), pinky = up(20, 18);
   if (!index && !mid && !ring && !pinky) return "black";
   if (index && mid && !ring) return "blue";
   if (index && !mid) return "red";
@@ -58,21 +125,26 @@ function getHandMode(lm) {
 }
 
 function drawLightning(x, y, color) {
-  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
   ctx.moveTo(x, y);
-  for(let i=0; i<5; i++) ctx.lineTo(x+(Math.random()-0.5)*100, y+(Math.random()-0.5)*100);
+  for(let i=0; i<4; i++) ctx.lineTo(x+(Math.random()-0.5)*100, y+(Math.random()-0.5)*100);
   ctx.stroke();
 }
 
 const holistic = new Holistic({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`});
-holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true });
+
+holistic.setOptions({ 
+  modelComplexity: 0, 
+  smoothLandmarks: true,
+  minDetectionConfidence: 0.4,
+  minTrackingConfidence: 0.4 
+});
 
 holistic.onResults((res) => {
-  statusText.innerText = "STATUS: SORCERER ACTIVE";
+  statusText.innerText = "SYSTEM: ONLINE";
   ctx.save();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // --- ระบบกางอาณาเขต ---
   let isDomain = false;
   if(res.leftHandLandmarks && res.rightHandLandmarks) {
     const d = Math.sqrt(Math.pow(res.leftHandLandmarks[0].x-res.rightHandLandmarks[0].x,2)+Math.pow(res.leftHandLandmarks[0].y-res.rightHandLandmarks[0].y,2));
@@ -81,7 +153,8 @@ holistic.onResults((res) => {
 
   if (isDomain) {
     ctx.fillStyle = "#010105"; ctx.fillRect(0,0,canvas.width,canvas.height);
-    for(let i=0; i<15; i++) { ctx.fillStyle="#fff"; ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2); }
+    ctx.fillStyle="#fff"; 
+    for(let i=0; i<15; i++) { ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 1.5, 1.5); }
   } else if (res.image) {
     ctx.drawImage(res.image, 0, 0, canvas.width, canvas.height);
   }
@@ -89,18 +162,17 @@ holistic.onResults((res) => {
   const lh = res.leftHandLandmarks, rh = res.rightHandLandmarks;
   const lm = getHandMode(lh), rm = getHandMode(rh);
 
-  // --- พลังม่วง ---
   let purple = false;
   if (lh && rh && ((lm==="red" && rm==="blue") || (lm==="blue" && rm==="red"))) {
     const d = Math.sqrt(Math.pow(lh[8].x-rh[8].x,2)+Math.pow(lh[8].y-rh[8].y,2));
     if (d < 0.15) {
       purple = true;
       const mx = ((lh[8].x+rh[8].x)/2)*canvas.width, my = ((lh[8].y+rh[8].y)/2)*canvas.height;
-      ctx.shadowBlur = 40; ctx.shadowColor = "purple";
-      let g = ctx.createRadialGradient(mx,my,0,mx,my,80);
+      ctx.shadowBlur = 30; ctx.shadowColor = "purple";
+      let g = ctx.createRadialGradient(mx,my,0,mx,my,70);
       g.addColorStop(0,"#fff"); g.addColorStop(0.3,"#a020f0"); g.addColorStop(1,"transparent");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mx,my,100,0,Math.PI*2); ctx.fill();
-      for(let i=0; i<4; i++) drawLightning(mx,my,"purple");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mx,my,90,0,Math.PI*2); ctx.fill();
+      for(let i=0; i<3; i++) drawLightning(mx,my,"purple");
     }
   }
 
@@ -108,26 +180,23 @@ holistic.onResults((res) => {
     [lh, rh].forEach(h => {
       if(!h) return;
       const m = getHandMode(h), ix = h[8].x*canvas.width, iy = h[8].y*canvas.height, kx = h[9].x*canvas.width, ky = h[9].y*canvas.height;
-      if (m==="black") { ctx.shadowBlur=30; ctx.shadowColor="red"; drawLightning(kx,ky,"red"); drawLightning(kx,ky,"black"); }
-      else if (m==="red") { ctx.shadowBlur=20; ctx.shadowColor="red"; ctx.fillStyle="red"; ctx.beginPath(); ctx.arc(ix,iy,20,0,6.28); ctx.fill(); }
-      else if (m==="blue") { ctx.shadowBlur=20; ctx.shadowColor="cyan"; ctx.fillStyle="cyan"; ctx.beginPath(); ctx.arc(ix,iy,25,0,6.28); ctx.fill(); }
+      if (m==="black") { ctx.shadowBlur=25; ctx.shadowColor="red"; drawLightning(kx,ky,"red"); drawLightning(kx,ky,"black"); }
+      else if (m==="red") { ctx.shadowBlur=20; ctx.shadowColor="red"; ctx.fillStyle="red"; ctx.beginPath(); ctx.arc(ix,iy,22,0,6.28); ctx.fill(); }
+      else if (m==="blue") { ctx.shadowBlur=20; ctx.shadowColor="cyan"; ctx.fillStyle="cyan"; ctx.beginPath(); ctx.arc(ix,iy,26,0,6.28); ctx.fill(); }
     });
   }
 
-  // วาดโครงร่าง
-  if (res.faceLandmarks) drawConnectors(ctx, res.faceLandmarks, FACEMESH_TESSELATION, {color: "#ffffff22", lineWidth: 0.5});
-  if (res.poseLandmarks) drawConnectors(ctx, res.poseLandmarks, POSE_CONNECTIONS, {color: isDomain?"#fff":"#0ff", lineWidth: 1.5});
-  if (lh) drawConnectors(ctx, lh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1});
-  if (rh) drawConnectors(ctx, rh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1});
+  ctx.shadowBlur = 0;
+  if (res.poseLandmarks) drawConnectors(ctx, res.poseLandmarks, POSE_CONNECTIONS, {color: isDomain?"#fff":"#0ff", lineWidth: 1});
+  if (lh) drawConnectors(ctx, lh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
+  if (rh) drawConnectors(ctx, rh, HAND_CONNECTIONS, {color: "#fff", lineWidth: 1.5});
   ctx.restore();
 });
 
 btnStart.onclick = async () => {
   startOverlay.style.display = 'none';
-  statusText.innerText = "STATUS: STARTING CAMERA...";
   resizeCanvas();
   
-  // ใช้ Camera Utils ของ MediaPipe โดยตรง (เสถียรที่สุดสำหรับเว็บ)
   const camera = new Camera(video, {
     onFrame: async () => {
       await holistic.send({image: video});
@@ -135,9 +204,7 @@ btnStart.onclick = async () => {
     width: 640,
     height: 480
   });
-  camera.start().catch(err => {
-    alert("กล้องมีปัญหา! กรุณาใช้ Chrome หรือ Safari และอนุญาตกล้อง");
-  });
+  camera.start();
 };
 </script>
 </body>
