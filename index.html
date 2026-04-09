@@ -3,39 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GO เบียว BY ACHI V8 - SORCERY FIGHT</title>
+  <title>GO เบียว BY ACHI V9 - REAL SORCERY</title>
   
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 
   <style>
-    :root { --neon-green: #0f0; --purple: #a020f0; }
-    body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+    body { margin: 0; background: #000; overflow: hidden; font-family: 'Orbitron', sans-serif; }
     .container { position: relative; width: 100vw; height: 100vh; }
     canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform: rotateY(180deg); z-index: 5; }
     video { display: none; }
 
-    .brand-ui { position: absolute; top: 20px; left: 20px; color: var(--neon-green); z-index: 10; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px #0f0; }
+    /* UI สไตล์ ACHI */
+    .brand { position: absolute; top: 20px; left: 20px; color: #0f0; z-index: 10; font-weight: bold; text-shadow: 0 0 10px #0f0; font-size: 22px; }
 
-    #overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .btn-start { padding: 15px 40px; background: none; border: 1px solid var(--neon-green); color: var(--neon-green); cursor: pointer; font-size: 20px; transition: 0.3s; }
-    .btn-start:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 30px #0f0; }
+    #start-screen { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .btn-achi { padding: 20px 50px; background: none; border: 2px solid #0f0; color: #0f0; cursor: pointer; font-size: 20px; letter-spacing: 5px; transition: 0.3s; }
+    .btn-achi:hover { background: #0f0; color: #000; box-shadow: 0 0 50px #0f0; }
 
-    /* เอฟเฟกต์การยิงม่วง */
-    .purple-shockwave { position: fixed; border: 5px solid white; border-radius: 50%; pointer-events: none; z-index: 50; transform: translate(-50%, -50%); animation: shock 0.6s ease-out forwards; opacity: 0; }
-    @keyframes shock { 0% { width: 0; height: 0; opacity: 1; border-width: 20px; } 100% { width: 200vw; height: 200vw; opacity: 0; border-width: 1px; } }
+    /* คลื่นกระแทกตอนดีดนิ้วยิงม่วง */
+    .shockwave { 
+        position: fixed; border: 10px solid rgba(255,255,255,0.8); border-radius: 50%; 
+        pointer-events: none; z-index: 50; transform: translate(-50%, -50%); 
+        animation: shockAnim 0.7s cubic-bezier(0.1, 0.5, 0.5, 1) forwards; 
+    }
+    @keyframes shockAnim {
+        0% { width: 0; height: 0; opacity: 1; border-width: 40px; }
+        100% { width: 300vw; height: 300vw; opacity: 0; border-width: 2px; }
+    }
   </style>
 </head>
 <body>
 
-<div id="overlay">
-  <h1 style="color:white; margin-bottom:30px;">GO เบียว BY ACHI V8</h1>
-  <button class="btn-start" onclick="bootSystem()">ACTIVATE SIX EYES</button>
+<div id="start-screen">
+  <h1 style="color:white; margin-bottom:40px; letter-spacing:10px;">GO เบียว BY ACHI</h1>
+  <button class="btn-achi" onclick="launchSystem()">ACTIVATE SYSTEM V9</button>
 </div>
 
-<div class="container" id="main">
-  <div class="brand-ui">SYSTEM: GO เบียว BY ACHI | CE: STABLE</div>
+<div class="container">
+  <div class="brand">SYSTEM: GO เบียว BY ACHI | 60 FPS</div>
   <video id="video" playsinline></video>
   <canvas id="canvas"></canvas>
 </div>
@@ -44,33 +51,37 @@
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const main = document.getElementById('main');
 
-let purpleActive = false;
-let waveX = 0, waveY = 0;
+let purpleReady = false;
 
-function drawBlackFlash(x, y) {
+// ฟังก์ชันวาดสายฟ้า Black Flash แบบสมจริง
+function drawAchiBlackFlash(x, y) {
     ctx.save();
-    for(let i=0; i<15; i++) {
+    for(let i=0; i<12; i++) {
         ctx.beginPath();
-        ctx.strokeStyle = i % 2 === 0 ? "#f00" : "#000";
-        ctx.lineWidth = Math.random() * 8 + 4;
+        ctx.strokeStyle = (i % 2 === 0) ? "#f00" : "#000";
+        ctx.lineWidth = Math.random() * 12 + 6;
+        ctx.lineJoin = 'bevel';
         ctx.moveTo(x, y);
-        let tx = x + (Math.random() - 0.5) * 400;
-        let ty = y + (Math.random() - 0.5) * 400;
-        ctx.lineTo(tx, ty);
+        let curX = x, curY = y;
+        for(let j=0; j<4; j++) {
+            curX += (Math.random() - 0.5) * 250;
+            curY += (Math.random() - 0.5) * 250;
+            ctx.lineTo(curX, curY);
+        }
         ctx.stroke();
     }
     ctx.restore();
 }
 
-function createShockwave(x, y) {
+function firePurpleShockwave(x, y) {
     const sw = document.createElement('div');
-    sw.className = 'purple-shockwave';
-    sw.style.left = x + 'px';
-    sw.style.top = y + 'px';
+    sw.className = 'shockwave';
+    // คำนวณตำแหน่งกลับด้านเพราะ Canvas Mirror
+    sw.style.left = (window.innerWidth - (x / canvas.width * window.innerWidth)) + 'px';
+    sw.style.top = (y / canvas.height * window.innerHeight) + 'px';
     document.body.appendChild(sw);
-    setTimeout(() => sw.remove(), 600);
+    setTimeout(() => sw.remove(), 700);
 }
 
 const holistic = new Holistic({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`});
@@ -81,91 +92,88 @@ holistic.onResults((res) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if(res.image) ctx.drawImage(res.image, 0, 0, canvas.width, canvas.height);
 
-    // วาดตาข่ายหน้า
+    // วาด Mesh หน้า (ชัดๆ)
     if(res.faceLandmarks) {
-        drawConnectors(ctx, res.faceLandmarks, FACEMESH_TESSELATION, {color: "#0f02", lineWidth: 0.5});
-        drawConnectors(ctx, res.faceLandmarks, FACEMESH_CONTOURS, {color: "#0f0", lineWidth: 1});
+        drawConnectors(ctx, res.faceLandmarks, FACEMESH_TESSELATION, {color: "#0f03", lineWidth: 0.5});
+        drawConnectors(ctx, res.faceLandmarks, FACEMESH_CONTOURS, {color: "#0f0", lineWidth: 1.5});
     }
 
-    const getGesture = (h) => {
+    const getHandState = (h) => {
         if(!h) return "none";
-        // นิ้ว: 0=โป้ง, 1=ชี้, 2=กลาง, 3=นาง, 4=ก้อย (ตามลำดับใน mediapipe คือ 4, 8, 12, 16, 20)
-        const tip = [8, 12, 16, 20];
-        const up = tip.map(id => h[id].y < h[id-2].y);
-        
+        // ตรวจสอบนิ้วขึ้น: ชี้(8), กลาง(12), นาง(16), ก้อย(20)
+        const up = [8, 12, 16, 20].map(id => h[id].y < h[id-2].y);
+        const snapDist = Math.hypot(h[4].x - h[12].x, h[4].y - h[12].y);
+
         if(up[0] && up[1] && up[2] && !up[3]) return "domain"; // 3 นิ้ว (ชี้ กลาง นาง)
         if(!up[0] && !up[1] && !up[2] && !up[3]) return "fist";
         if(up[0] && !up[1] && !up[2] && !up[3]) return "red";
         if(up[0] && up[1] && !up[2] && !up[3]) return "blue";
-        // ท่าดีดนิ้ว (โป้งแตะกลาง)
-        const snap = Math.sqrt(Math.pow(h[4].x - h[12].x, 2) + Math.pow(h[4].y - h[12].y, 2));
-        if(snap < 0.03) return "snap";
+        if(snapDist < 0.035) return "snap";
         return "none";
     };
 
     const lh = res.leftHandLandmarks, rh = res.rightHandLandmarks;
-    const lg = getGesture(lh), rg = getGesture(rh);
+    const lState = getHandState(lh), rState = getHandState(rh);
 
-    // 1. ตรวจจับอาณาเขต (3 นิ้ว สองข้าง)
-    if(lg === "domain" && rg === "domain") {
-        ctx.fillStyle = "rgba(0,0,0,0.8)";
+    // 1. อาณาเขต (3 นิ้ว สองข้าง)
+    if(lState === "domain" && rState === "domain") {
+        ctx.fillStyle = "rgba(0,0,0,0.85)";
         ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.strokeStyle = "#0f0"; ctx.lineWidth = 5;
-        ctx.strokeRect(50,50,canvas.width-100,canvas.height-100);
+        ctx.shadowBlur = 20; ctx.shadowColor = "#0f0";
+        ctx.strokeStyle = "#0f0"; ctx.lineWidth = 10;
+        ctx.strokeRect(30, 30, canvas.width-60, canvas.height-60);
     }
 
-    // 2. ผสมพลังม่วง
-    if(!purpleActive && lh && rh) {
-        const d = Math.sqrt(Math.pow(lh[8].x - rh[8].x, 2) + Math.pow(lh[8].y - rh[8].y, 2));
-        if(d < 0.06 && ((lg==="red" && rg==="blue") || (lg==="blue" && rg==="red"))) {
-            purpleActive = true;
+    // 2. ผสมม่วง (แดง + ฟ้า)
+    if(!purpleReady && lh && rh) {
+        const d = Math.hypot(lh[8].x - rh[8].x, lh[8].y - rh[8].y);
+        if(d < 0.07 && ((lState==="red" && rState==="blue") || (lState==="blue" && rState==="red"))) {
+            purpleReady = true;
         }
     }
 
-    if(purpleActive) {
+    if(purpleReady) {
         const h = rh || lh;
         const x = h[9].x * canvas.width, y = h[9].y * canvas.height;
-        // บอลม่วง
-        const g = ctx.createRadialGradient(x, y, 0, x, y, 150);
-        g.addColorStop(0, "#fff"); g.addColorStop(0.5, "#a020f0"); g.addColorStop(1, "transparent");
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 150, 0, Math.PI*2); ctx.fill();
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, 180);
+        grad.addColorStop(0, "#fff"); grad.addColorStop(0.4, "#a020f0"); grad.addColorStop(1, "transparent");
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, 200, 0, Math.PI*2); ctx.fill();
         
-        if(rg === "snap" || lg === "snap") {
-            createShockwave(window.innerWidth - (h[9].x * window.innerWidth), h[9].y * window.innerHeight);
-            purpleActive = false;
+        if(rState === "snap" || lState === "snap") {
+            firePurpleShockwave(x, y);
+            purpleReady = false;
         }
     } else {
         [lh, rh].forEach(h => {
             if(!h) return;
-            const g = getGesture(h);
+            const state = getHandState(h);
             const x = h[8].x * canvas.width, y = h[8].y * canvas.height;
 
-            // วาดจุดเขียว เส้นขาว
-            drawConnectors(ctx, h, HAND_CONNECTIONS, {color: "#fff", lineWidth: 2});
+            // วาด Skeleton: จุดเขียว เส้นขาว (ตามสั่งเป๊ะ)
+            drawConnectors(ctx, h, HAND_CONNECTIONS, {color: "#fff", lineWidth: 2.5});
             h.forEach(pt => {
-                ctx.fillStyle = "#0f0"; ctx.beginPath();
-                ctx.arc(pt.x * canvas.width, pt.y * canvas.height, 5, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "#0f0"; ctx.shadowBlur = 10; ctx.shadowColor = "#0f0";
+                ctx.beginPath(); ctx.arc(pt.x * canvas.width, pt.y * canvas.height, 6, 0, Math.PI*2); ctx.fill();
             });
 
-            if(g === "fist") drawBlackFlash(h[9].x * canvas.width, h[9].y * canvas.height);
-            if(g === "red") {
-                const grad = ctx.createRadialGradient(x, y, 0, x, y, 80);
-                grad.addColorStop(0, "#fff"); grad.addColorStop(0.5, "#f00"); grad.addColorStop(1, "transparent");
-                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, 80, 0, Math.PI*2); ctx.fill();
+            if(state === "fist") drawAchiBlackFlash(h[9].x * canvas.width, h[9].y * canvas.height);
+            if(state === "red") {
+                const g = ctx.createRadialGradient(x, y, 0, x, y, 90);
+                g.addColorStop(0, "#fff"); g.addColorStop(0.5, "#f00"); g.addColorStop(1, "transparent");
+                ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 90, 0, Math.PI*2); ctx.fill();
             }
-            if(g === "blue") {
-                const grad = ctx.createRadialGradient(x, y, 0, x, y, 100);
-                grad.addColorStop(0, "#fff"); grad.addColorStop(0.5, "#0cf"); grad.addColorStop(1, "transparent");
-                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, 100, 0, Math.PI*2); ctx.fill();
+            if(state === "blue") {
+                const g = ctx.createRadialGradient(x, y, 0, x, y, 110);
+                g.addColorStop(0, "#fff"); g.addColorStop(0.5, "#0bf"); g.addColorStop(1, "transparent");
+                ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 110, 0, Math.PI*2); ctx.fill();
             }
         });
     }
-
     ctx.restore();
 });
 
-function bootSystem() {
-    document.getElementById('overlay').style.display = 'none';
+function launchSystem() {
+    document.getElementById('start-screen').style.display = 'none';
     canvas.width = 1280; canvas.height = 720;
     new Camera(video, { onFrame: async () => { await holistic.send({image: video}); }, width: 1280, height: 720 }).start();
 }
